@@ -1,8 +1,13 @@
+#===============================================================================
+#========= Create a function to run Several ML Models ==========================
+#===============================================================================
+
+
 AutoML<-function(DataFrame,Split_Value,Size,SMOTE){
 
-  #======================================
-  #Library to use Weka functions
-  library(RWeka)
+  #==================Load Libraries to use Weka functions=======================
+  #Library to run ML Models
+  library(RWeka) 
   #Libraries needed to normalize the numeric values
   library(cluster)
   library(MASS)
@@ -13,28 +18,30 @@ AutoML<-function(DataFrame,Split_Value,Size,SMOTE){
   #Library to split values
   library(caTools)
   
-  #============Resampling data ================
-  
+  #==================Resampling data ===========================================
+  #Load weka filter
   resample<-make_Weka_filter("weka/filters/supervised/instance/Resample")
-  
+  #Resample the data with the Size given
   DataFrame<-resample(target~ .,data=DataFrame,control=Weka_control(Z=Size))
   
-  #===========Numeric Columns to be normalized
+  #==================Normalization ============================================
+  #Select the numberic columns to be normalized
   columns_to_change<-colnames(select_if(DataFrame, is.numeric))
   #Normalize Dataframe
   for(i in 1:length(columns_to_change)){column_number<-which(colnames(DataFrame)==columns_to_change[i])  
-  DataFrame[,column_number]<-data.Normalization (DataFrame[,column_number] ,type="n1",normalization="column")
-  }
+  DataFrame[,column_number]<-data.Normalization (DataFrame[,column_number] ,type="n1",normalization="column")}
   
-  
-  #===========Split File
+  #==================Split data ==============================================
+  #Create a new dataframe
   data=DataFrame
+  #Create a split data with a split feature
   split = sample.split(data$target, SplitRatio = Split_Value)
+  #Create training set
   training_set = subset(data, split == TRUE)
+  #Create testing set
   test_set = subset(data, split == FALSE)
   
-  
-  #===========Applying SMOTE
+  #==================Split data ==============================================
     
   if (SMOTE=='Y') {
     #str(training_set$target)
@@ -73,10 +80,10 @@ AutoML<-function(DataFrame,Split_Value,Size,SMOTE){
   #OneR
   #Part
   #ZeroR
-  #DesicionStump #---- RUN cv
+  #DesicionStump 
   #J48
   #LMT
-  #randomForest         ----------Java.lang.OutOfMemoryError
+  #randomForest        
   #Randomtree
   #REPTree
   
@@ -230,15 +237,17 @@ AutoML<-function(DataFrame,Split_Value,Size,SMOTE){
   TRUE_Correct_Clasified_Test<-c(ZeroR_Test[1,1],OneR_Test[1,1] ,BayesNet_Test[1,1],DecisionStump_Test[1,1],IBk_Test[1,1],J48_Test[1,1] ,LMT_Test[1,1],Logistic_Test[1,1],MultilayerPerceptron_Test[1,1],NaiveBayes_Test[1,1],PART_Test[1,1],RandomForest_Test[1,1],RandomTree_Test[1,1],REPTree_Test[1,1],SMO_Test[1,1])
   #Build table models 
   Table_Models<-data.frame(Models,FALSE_Correct_Clasified,FALSE_Correct_Clasified_CV,TRUE_Correct_Clasified,TRUE_Correct_Clasified_CV,FALSE_Correct_Clasified_Test,TRUE_Correct_Clasified_Test)
+  
   #True Possitive and Negatives
   TN<-summary(train_file_clean$target)[2]#True Negative
   TP<-summary(train_file_clean$target)[1]#True Positive
   TN_Test<-summary(test_set$target)[2]#True Negative
   TP_Test<-summary(test_set$target)[1]#True Positive
+  
   #Accuracy
-  Table_Models$Accuracy<-(FALSE_Correct_Clasified+TRUE_Correct_Clasified)/(TN+TP)
-  Table_Models$Accuracy_Cross_Val<-(FALSE_Correct_Clasified_CV+TRUE_Correct_Clasified_CV)/(TN+TP)
-  Table_Models$Accuracy_Test<-(FALSE_Correct_Clasified_Test+TRUE_Correct_Clasified_Test)/(TN_Test+TP_Test)
+  Table_Models$Accuracy<-((FALSE_Correct_Clasified+TRUE_Correct_Clasified)/(TN+TP))*100
+  Table_Models$Accuracy_Cross_Val<-((FALSE_Correct_Clasified_CV+TRUE_Correct_Clasified_CV)/(TN+TP))*100
+  Table_Models$Accuracy_Test<-((FALSE_Correct_Clasified_Test+TRUE_Correct_Clasified_Test)/(TN_Test+TP_Test))*100
   #Build Sensitivity
   Table_Models$Sensitivity<-(TRUE_Correct_Clasified/TP)*100
   Table_Models$Sensitivity_CV<-(TRUE_Correct_Clasified_CV/TP)*100
@@ -283,46 +292,68 @@ AutoML<-function(DataFrame,Split_Value,Size,SMOTE){
 }
 save.image()
 
+#===============================================================================
+#===================Bagging-Boosting-Ensamble Methods===========================
+#===============================================================================
 
-Auto_ML_Bag_Bos_Ens<-function(Data,Size,Model1,Model2,Previous_Table){
+Auto_ML_Bag_Bos_Ens<-function(Data,Split_Value,Size,Model1,Model2,Previous_Table,SMOTE){
   
-  #============ZeroR function for errors
-  ZeroR<-make_Weka_classifier("weka/classifiers/rules/ZeroR")
   
-  #============Resampling data ================
-  
+  #==================Resampling data ===========================================
+  #Load weka filter
   resample<-make_Weka_filter("weka/filters/supervised/instance/Resample")
+  #Resample the data with the Size given
+  DataFrame<-resample(target~ .,data=DataFrame,control=Weka_control(Z=Size))
   
+  #==================Normalization ============================================
+  #Select the numberic columns to be normalized
+  columns_to_change<-colnames(select_if(DataFrame, is.numeric))
+  #Normalize Dataframe
+  for(i in 1:length(columns_to_change)){column_number<-which(colnames(DataFrame)==columns_to_change[i])  
+  DataFrame[,column_number]<-data.Normalization (DataFrame[,column_number] ,type="n1",normalization="column")}
   
-  #===============Bagging===================
-  train_file_clean<-Data
-  #train_file_clean<-resample(target~ .,data=train_file,control=Weka_control(Z=Size))
+  #==================Split data ==============================================
+  #Create a new dataframe
+  data=DataFrame
+  #Create a split data with a split feature
+  split = sample.split(data$target, SplitRatio = Split_Value)
+  #Create training set
+  training_set = subset(data, split == TRUE)
+  #Create testing set
+  test_set = subset(data, split == FALSE)
   
-  #"weka.classifiers.trees.RandomForest"
+  #==================Split data ==============================================
+  
+  if (SMOTE=='Y') {
+    #str(training_set$target)
+    prop.table(table(training_set$target))
+    training_set<-SMOTE(target ~ ., training_set, perc.over = 100, perc.under=200)
+    #prop.table(table(training_set$target))
+    
+  }
+  #=====================create a new file to use in the models==============
+  train_file_clean<-training_set
+  #========Load models to improve accuracy and reduce overfitting===========
   Best_Model_1<-Model1
   Best_Model_2<-Model2
   
+  #=========================Bagging=========================================
+  #Build the classifier
   Bagging_Classifier<-Bagging(train_file_clean$target~ ., data = train_file_clean, control = Weka_control(W=Best_Model_1), na.action=NULL)
+  #summary to Evaluate the classifier
   Bagging_Train<-summary(Bagging_Classifier)
   #Cross Validation
   Bagging_CV <- evaluate_Weka_classifier(Bagging_Classifier, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)
+  Bagging_Test<-table( predict(Bagging_Classifier,newdata=test_set),test_set$target )
   if(!exists("Bagging_Train")){Bagging_Train<-summary(ZeroR_Classifier)}
   if(!exists("Bagging_CV")){Bagging_CV<-evaluate_Weka_classifier(ZeroR_Classifier, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)}
   
-  #===============LogitBoost===================
-  
-  #tryCatch(expr = {LogitBoost_Classifier<-LogitBoost(train_file_clean$target~ ., data = train_file_clean,control = Weka_control(W=Best_Model_1),na.action=NULL)
-  #},finally = {LogitBoost_Classifier<-ZeroR(train_file_clean$target~ ., data = train_file_clean)})
-  #  LogitBoost_Train<-summary(LogitBoost_Classifier)
-  #Cross Validation
-  #LogitBoost_CV <- evaluate_Weka_classifier(LogitBoost_Classifier, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)
-  #if(!exists("LogitBoost_Train")){LogitBoost_Train<-summary(ZeroR_Classifier)}
-  #if(!exists("LogitBoost_CV")){LogitBoost_CV<-evaluate_Weka_classifier(ZeroR_Classifier, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)}
   #===============AdaBoostM1===================
   AdaBoostM1_Classifier<-AdaBoostM1(train_file_clean$target~ ., data = train_file_clean,control = Weka_control(W=Best_Model_1), na.action=NULL)
   AdaBoostM1_Train<-summary(AdaBoostM1_Classifier)
   #Cross Validation
   AdaBoostM1_CV <- evaluate_Weka_classifier(AdaBoostM1_Classifier, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)
+  AdaBoostM1_Test<-table( predict(AdaBoostM1_Classifier,newdata=test_set),test_set$target )
   if(!exists("AdaBoostM1_Train")){AdaBoostM1_Train<-summary(ZeroR_Classifier)}
   if(!exists("AdaBoostM1_CV")){AdaBoostM1_CV<-evaluate_Weka_classifier(ZeroR_Classifier, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)}
   #===============Stacking===================
@@ -332,28 +363,67 @@ Auto_ML_Bag_Bos_Ens<-function(Data,Size,Model1,Model2,Previous_Table){
   Stacking_Train<-summary(Stacking_Classifier)
   #Cross Validation
   Stacking_CV <- evaluate_Weka_classifier(Stacking_Classifier, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)
+  Stacking_Test<-table( predict(Stacking_Classifier,newdata=test_set),test_set$target )
   if(!exists("Stacking_Train")){Stacking_Train<-summary(ZeroR_Classifier)}
   if(!exists("Stacking_CV")){Stacking_CV<-evaluate_Weka_classifier(ZeroR_Classifier, numFolds = 10, complexity = FALSE, seed = 1, class = TRUE)}
   #==============Joint Models=================
-  Models<-c("Bagging","LogitBoost","AdaBoostM1","Stacking")
-  FALSE_Correct_Clasified<-c(Bagging_Train$confusionMatrix[2,2],LogitBoost_Train$confusionMatrix[2,2],AdaBoostM1_Train$confusionMatrix[2,2],Stacking_Train$confusionMatrix[2,2])
-  FALSE_Correct_Clasified_CV<-c(Bagging_CV$confusionMatrix[2,2],LogitBoost_CV$confusionMatrix[2,2],AdaBoostM1_CV$confusionMatrix[2,2],Stacking_CV$confusionMatrix[2,2])
-  TRUE_Correct_Clasified<-c(Bagging_Train$confusionMatrix[1,1],LogitBoost_Train$confusionMatrix[1,1],AdaBoostM1_Train$confusionMatrix[1,1],Stacking_Train$confusionMatrix[1,1])
-  TRUE_Correct_Clasified_CV<-c(Bagging_CV$confusionMatrix[1,1],LogitBoost_CV$confusionMatrix[1,1],AdaBoostM1_CV$confusionMatrix[1,1],Stacking_CV$confusionMatrix[1,1])
-  Table_Models<-data.frame(Models,FALSE_Correct_Clasified,TRUE_Correct_Clasified,FALSE_Correct_Clasified_CV,TRUE_Correct_Clasified_CV)
+  Models<-c("Bagging","AdaBoostM1","Stacking")
+  
+  
+  
+  
+  FALSE_Correct_Clasified<-c(Bagging_Train$confusionMatrix[2,2],AdaBoostM1_Train$confusionMatrix[2,2],Stacking_Train$confusionMatrix[2,2])
+  FALSE_Correct_Clasified_Test<-c(Bagging_Test[2,2],AdaBoostM1_Test[2,2],Stacking_Test[2,2])
+  FALSE_Correct_Clasified_CV<-c(Bagging_CV$confusionMatrix[2,2],AdaBoostM1_CV$confusionMatrix[2,2],Stacking_CV$confusionMatrix[2,2])
+  TRUE_Correct_Clasified_Test<-c(Bagging_Test[1,1],AdaBoostM1_Test[1,1],Stacking_Test[1,1])
+  TRUE_Correct_Clasified<-c(Bagging_Train$confusionMatrix[1,1],AdaBoostM1_Train$confusionMatrix[1,1],Stacking_Train$confusionMatrix[1,1])
+  TRUE_Correct_Clasified_CV<-c(Bagging_CV$confusionMatrix[1,1],AdaBoostM1_CV$confusionMatrix[1,1],Stacking_CV$confusionMatrix[1,1])
+  Table_Models<-data.frame(Models,FALSE_Correct_Clasified,FALSE_Correct_Clasified_CV,TRUE_Correct_Clasified,TRUE_Correct_Clasified_CV,FALSE_Correct_Clasified_Test,TRUE_Correct_Clasified_Test)
+  
   TN<-summary(train_file_clean$target)[2]#True Negative
   TP<-summary(train_file_clean$target)[1]#True Positive
+  TN_Test<-summary(test_set$target)[2]#True Negative
+  TP_Test<-summary(test_set$target)[1]#True Positive
+  
+  
   Table_Models$Accuracy<-((FALSE_Correct_Clasified+TRUE_Correct_Clasified)/(TN+TP))*100
-  Table_Models$Cross_Val_Accuracy<-((FALSE_Correct_Clasified_CV+TRUE_Correct_Clasified_CV)/(TN+TP))*100
+  Table_Models$Accuracy_Cross_Val<-((FALSE_Correct_Clasified_CV+TRUE_Correct_Clasified_CV)/(TN+TP))*100
+  Table_Models$Accuracy_Test<-(FALSE_Correct_Clasified_Test+TRUE_Correct_Clasified_Test)/(TN_Test+TP_Test)*100
   Table_Models$Sensitivity<-(TRUE_Correct_Clasified/TP)*100
   Table_Models$Sensitivity_CV<-(TRUE_Correct_Clasified_CV/TP)*100
+  Table_Models$Sensitivity_Test<-(TRUE_Correct_Clasified_Test/TP_Test)*100
   Table_Models$Specificity<-(FALSE_Correct_Clasified/TN)*100
   Table_Models$Specificity_CV<-(FALSE_Correct_Clasified_CV/TN)*100
-  Table_Models$Overfitting<-(Table_Models$Accuracy-Table_Models$Cross_Val_Accuracy)*100
-  Table_Models$Ensamble<-ifelse(Table_Models$Models=="ZeroR"|Table_Models$Models=="OneR",-1,ifelse(Table_Models$Models=="Bagging"|Table_Models$Models=="LogitBoost"|Table_Models$Models=="AdaBoostM1"|Table_Models$Models=="Stacking",1,0))
-  Table_Models<-rbind(Table_Models,Previous_Table)
-  Table_Models<-Table_Models[order(Table_Models$Ensamble,Table_Models$Overfitting,Table_Models$FALSE_Correct_Clasified_CV),]
+  Table_Models$Specificity_Test<-(FALSE_Correct_Clasified_Test/TN_Test)*100
+  Table_Models$Overfitting_Acc_vs_CV<-(Table_Models$Accuracy-Table_Models$Accuracy_Cross_Val)
+  Table_Models$Overfitting_Acc_vs_Test<-(Table_Models$Accuracy-Table_Models$Accuracy_Test)
+  Table_Models$Ensamble<-ifelse(Table_Models$Models=="ZeroR"|Table_Models$Models=="OneR",-1,ifelse(Table_Models$Models=="Bagging"|Table_Models$Models=="AdaBoostM1"|Table_Models$Models=="Stacking",1,0))
+  #Sort by Accuracy
+  Table_Models <- Table_Models[order(Table_Models$Accuracy),] 
+  #Reassign Rows numbers to order
   rownames(Table_Models) <- NULL
+  #Assign the column number to a new column
+  Table_Models$Order_Accuracy<-rownames(Table_Models)
+  #Sort by Accuracy CV
+  Table_Models <- Table_Models[order(Table_Models$Accuracy_Cross_Val),] 
+  rownames(Table_Models) <- NULL
+  Table_Models$Order_Cross_Accuracy<-rownames(Table_Models)
+  #Sort by Accuracy Test
+  Table_Models <- Table_Models[order(Table_Models$Accuracy_Test),] 
+  rownames(Table_Models) <- NULL
+  Table_Models$Order_Test<-rownames(Table_Models)
+  #Convert to numberic values to sum and order by the total
+  Table_Models$Order_Accuracy<-as.numeric(Table_Models$Order_Accuracy)
+  Table_Models$Order_Cross_Accuracy<-as.numeric(Table_Models$Order_Cross_Accuracy)
+  Table_Models$Order_Test<-as.numeric(Table_Models$Order_Test)
+  #Sort by Top
+  Table_Models$Top<-Table_Models$Order_Cross_Accuracy+Table_Models$Order_Accuracy+Table_Models$Order_Test
+  Table_Models$Top<-as.numeric(Table_Models$Top)
+  Table_Models <- Table_Models[order(-Table_Models$Top),] 
+  rownames(Table_Models) <- NULL
+  Table_Models$Top<-rownames(Table_Models)
+  Table_Models<-subset(Table_Models, select = c(-20,-21,-22))
+  Table_Models<-rbind(Table_Models,Previous_Table)
   return(Table_Models)
 }
 
